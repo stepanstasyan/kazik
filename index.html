@@ -13,14 +13,31 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: peachpuff;
+  background-color: #2e2e2e;
   font-family: Arial, sans-serif;
 }
 
+/* контейнер слотов с постоянной подсветкой */
 .slot-container {
   display: flex;
   gap: 10px;
   position: relative;
+  padding: 40px;
+  border-radius: 16px;
+  background-color: #2e2e2e;
+  box-shadow: 0 0 30px rgba(255, 255, 180, 0.4);
+  transition: box-shadow 0.3s;
+}
+
+/* пульсация подсветки */
+.slot-container.pulse-glow {
+  animation: glowPulse 1s infinite alternate;
+}
+
+@keyframes glowPulse {
+  0% { box-shadow: 0 0 30px rgba(255, 255, 180, 0.4); }
+  50% { box-shadow: 0 0 50px rgba(255, 255, 180, 0.8); }
+  100% { box-shadow: 0 0 30px rgba(255, 255, 180, 0.4); }
 }
 
 .window {
@@ -31,6 +48,7 @@ body {
   overflow: hidden;
   position: relative;
   background: linear-gradient(to bottom, #555555 0%, #ffffff 20%, #ffffff 80%, #555555 100%);
+  box-shadow: 0 0 12px rgba(255, 255, 200, 0.3);
 }
 
 .reel {
@@ -57,30 +75,61 @@ body {
   z-index: 2;
 }
 
+/* кнопка */
 .btn {
-  width: 180px;
-  height: 60px;
+  position: relative;
+  overflow: hidden;
+  width: 200px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: bold;
   font-family: Arial, sans-serif;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   color: white;
   cursor: pointer;
   margin-top: 40px;
   transition: background 0.3s;
 }
 
+/* цвета кнопки */
 .green { background: #4caf50; }
 .red { background: #e53935; }
 .gray { background: #777777; cursor: default; }
 
+/* пульсация кнопки */
 .pulse { animation: pulseAnim 1s infinite; }
-@keyframes pulseAnim { 0%{transform:scale(1);} 50%{transform:scale(1.1);} 100%{transform:scale(1);} }
+@keyframes pulseAnim { 
+  0%{transform:scale(1);} 
+  50%{transform:scale(1.1);} 
+  100%{transform:scale(1);} 
+}
 
+/* блеск на кнопке */
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(120deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0.0) 100%);
+  transform: skewX(-25deg);
+}
+
+.btn.shine::before {
+  animation: shineAnim 1s ease-in-out;
+}
+
+@keyframes shineAnim {
+  0% { left: -75%; }
+  100% { left: 125%; }
+}
+
+/* мигание при выигрыше */
 .blink { animation: blinkAnim 0.2s ease-in-out 6; }
 @keyframes blinkAnim { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
 </style>
@@ -117,7 +166,7 @@ const wins = [
 ];
 const btn = document.getElementById("spinBtn");
 const jackpotSound = document.getElementById("jackpotSound");
-
+const slotContainer = document.querySelector(".slot-container");
 const itemHeight = 120;
 
 // создаем фрукты в каждом барабане
@@ -152,16 +201,26 @@ function spinReel(win, stopIndex, duration, finalTransition){
   }, duration);
 }
 
+function getFileName(path){
+  return path.split("/").pop();
+}
+
 function spin(){
-  // блокируем кнопку и делаем серой
   btn.disabled = true;
   btn.className = "btn gray";
   btn.classList.remove("pulse");
 
-  const results = [];
+  // включаем пульсацию подсветки
+  slotContainer.classList.add("pulse-glow");
 
-  // разная скорость остановки барабанов
-  const durations = [1500, 2200, 3000]; // первый быстрый, второй медленнее, третий медленно
+  // делаем блеск чаще (80% вероятность)
+  if(Math.random() < 0.99){
+    btn.classList.add("shine");
+    setTimeout(()=>{ btn.classList.remove("shine"); }, 1000);
+  }
+
+  const results = [];
+  const durations = [1500, 2200, 3000];
 
   wins.forEach((win,index)=>{
     const stopIdx = randomFruitIndex();
@@ -170,28 +229,35 @@ function spin(){
   });
 
   const maxDuration = Math.max(...durations);
-  setTimeout(()=>{handleAfterSpin(results); btn.disabled=false;}, maxDuration+400);
+  setTimeout(()=>{
+    slotContainer.style.transition = "box-shadow 0.5s";
+    slotContainer.classList.remove("pulse-glow");
+  }, maxDuration - 300);
+
+  setTimeout(()=>{
+    handleAfterSpin(results);
+    btn.disabled=false;
+  }, maxDuration+400);
 }
 
 // проверка выигрышных комбинаций
 function handleAfterSpin(results){
-  // Джекпот: три одинаковые картинки
-  const isThreeSame = results.every(v => v === results[0]);
+  const resultsNames = results.map(r => getFileName(r));
+  const isThreeSame = resultsNames.every(v => v === resultsNames[0]);
 
-  // Явно прописанные комбинации с 7 и bar
   const winningCombos = [
-    ["images/7.png","images/7.png","images/7.png"],
-    ["images/bar.png","images/bar.png","images/bar.png"],
-    ["images/7.png","images/7.png","images/bar.png"],
-    ["images/7.png","images/bar.png","images/7.png"],
-    ["images/bar.png","images/7.png","images/7.png"],
-    ["images/bar.png","images/bar.png","images/7.png"],
-    ["images/bar.png","images/7.png","images/bar.png"],
-    ["images/7.png","images/bar.png","images/bar.png"]
+    ["7.png","7.png","7.png"],
+    ["bar.png","bar.png","bar.png"],
+    ["7.png","7.png","bar.png"],
+    ["7.png","bar.png","7.png"],
+    ["bar.png","7.png","7.png"],
+    ["bar.png","bar.png","7.png"],
+    ["bar.png","7.png","bar.png"],
+    ["7.png","bar.png","bar.png"]
   ];
 
   const is7BarJackpot = winningCombos.some(combo => 
-    combo[0] === results[0] && combo[1] === results[1] && combo[2] === results[2]
+    combo.every((img, idx) => img === resultsNames[idx])
   );
 
   const isJackpot = isThreeSame || is7BarJackpot;
