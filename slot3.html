@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Слот-машина</title>
+<style>
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: peachpuff;
+  font-family: Arial, sans-serif;
+}
+
+.slot-container {
+  display: flex;
+  gap: 10px;
+  position: relative;
+}
+
+.window {
+  width: 120px;
+  height: 360px;
+  border: 3px solid #333;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  /* Более объёмный градиент: центр белый, края тёмные */
+  background: radial-gradient(ellipse at center, #ffffff 40%, #cccccc 100%);
+}
+
+.reel {
+  display: flex;
+  flex-direction: column;
+}
+
+.reel img {
+  width: 100%;
+  height: 120px;
+  object-fit: contain;
+}
+
+.center-frame {
+  position: absolute;
+  top: 120px;
+  left: 0;
+  width: 100%;
+  height: 120px;
+  border: 3px solid #8B0000;
+  border-radius: 12px;
+  pointer-events: none;
+  box-sizing: border-box;
+  z-index: 2;
+}
+
+.btn {
+  width: 150px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  margin-top: 30px;
+}
+
+.green { background: #4caf50; }
+.red { background: #e53935; }
+.pulse { animation: pulseAnim 1s infinite; }
+@keyframes pulseAnim { 0%{transform:scale(1);} 50%{transform:scale(1.1);} 100%{transform:scale(1);} }
+
+.blink { animation: blinkAnim 0.2s ease-in-out 6; }
+@keyframes blinkAnim { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+</style>
+</head>
+<body>
+
+<div class="slot-container">
+  <div class="window" id="win1"><div class="reel"></div><div class="center-frame"></div></div>
+  <div class="window" id="win2"><div class="reel"></div><div class="center-frame"></div></div>
+  <div class="window" id="win3"><div class="reel"></div><div class="center-frame"></div></div>
+</div>
+
+<button id="spinBtn" class="btn green">Крутить!</button>
+
+<audio id="jackpotSound">
+  <source src="https://www.myinstants.com/media/sounds/success-fanfare-trumpets.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+const fruits = [
+  "images/cherry.png",
+  "images/lemon.png",
+  "images/banana.png",
+  "images/kiwi.png",
+  "images/7.png"
+];
+
+let firstSpin = true;
+const wins = [
+  document.getElementById("win1"),
+  document.getElementById("win2"),
+  document.getElementById("win3")
+];
+const btn = document.getElementById("spinBtn");
+const jackpotSound = document.getElementById("jackpotSound");
+
+const itemHeight = 120;
+
+// создаем фрукты
+wins.forEach(win=>{
+  const reel = win.querySelector(".reel");
+  for(let i=0;i<fruits.length*4;i++){
+    const img = document.createElement("img");
+    img.src = fruits[i%fruits.length];
+    reel.appendChild(img);
+  }
+});
+
+function randomFruitIndex(){ return Math.floor(Math.random()*fruits.length); }
+
+// прокрутка с разной скоростью остановки
+function spinReel(win, stopIndex, duration, finalTransition){
+  const reel = win.querySelector(".reel");
+  let pos = 0;
+  const speed = 60;
+  const interval = setInterval(()=>{
+    pos += speed;
+    const maxPos = reel.children.length * itemHeight;
+    if(pos >= maxPos) pos = 0;
+    reel.style.transform = `translateY(-${pos}px)`;
+  },30);
+
+  setTimeout(()=>{
+    clearInterval(interval);
+    const finalOffset = stopIndex * itemHeight;
+    reel.style.transition = finalTransition;
+    reel.style.transform = `translateY(-${finalOffset}px)`;
+    setTimeout(()=>{reel.style.transition="";}, parseInt(finalTransition.match(/\d+/))*1000);
+  }, duration);
+}
+
+function spin(){
+  btn.disabled = true;
+  btn.classList.remove("pulse");
+  const results=[];
+  wins.forEach((win,index)=>{
+    const stopIdx = randomFruitIndex();
+    results[index]=fruits[stopIdx];
+    // разная длительность остановки для эффектного слота
+    if(index===0){ 
+      spinReel(win, stopIdx, 400, "transform 0.2s ease-out"); // быстрый
+    } else if(index===1){ 
+      spinReel(win, stopIdx, 1200, "transform 0.5s ease-out"); // медленный
+    } else { 
+      spinReel(win, stopIdx, 2000, "transform 0.8s ease-out"); // ещё медленнее
+    }
+  });
+
+  const maxDuration = 2200;
+  setTimeout(()=>{handleAfterSpin(results); btn.disabled=false;}, maxDuration+400);
+}
+
+function handleAfterSpin(results){
+  const isJackpot = results.every(v=>v===results[0]);
+  if(isJackpot){
+    btn.textContent="Крутить!";
+    btn.className="btn green";
+    wins.forEach(win=>{win.classList.add("blink"); win.addEventListener("animationend",()=>{win.classList.remove("blink");},{once:true});});
+    const originalBg=document.body.style.backgroundColor;
+    document.body.style.backgroundColor="#b4f7b4";
+    setTimeout(()=>{document.body.style.backgroundColor = originalBg;},500);
+    jackpotSound.currentTime=0; jackpotSound.play();
+  } else {
+    btn.textContent="Додеп!";
+    btn.className="btn red pulse";
+  }
+  if(firstSpin) firstSpin=false;
+}
+
+btn.addEventListener("click",()=>{if(!btn.disabled) spin();});
+</script>
+</body>
+</html>
