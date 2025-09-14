@@ -102,8 +102,6 @@ body {
 <script>
 const fruits = [
   "images/cherry.png",
-  "images/lemon.png",
-  "images/banana.png",
   "images/kiwi.png",
   "images/7.png", 
   "images/watermelon.png", 
@@ -122,7 +120,7 @@ const jackpotSound = document.getElementById("jackpotSound");
 
 const itemHeight = 120;
 
-// создаем фрукты
+// создаем фрукты в каждом барабане
 wins.forEach(win=>{
   const reel = win.querySelector(".reel");
   for(let i=0;i<fruits.length*4;i++){
@@ -173,13 +171,24 @@ function spin(){
 
 // проверка выигрышных комбинаций
 function handleAfterSpin(results){
-  // Джекпот если три одинаковых картинки
+  // Джекпот: три одинаковые картинки
   const isThreeSame = results.every(v => v === results[0]);
 
-  // Джекпот 7 или bar
-  const is7BarJackpot = 
-    (results.every(v=>v==="images/7.png") || results.every(v=>v==="images/bar.png")) ||
-    results.every(v => v==="images/7.png" || v==="images/bar.png");
+  // Явно прописанные комбинации с 7 и bar
+  const winningCombos = [
+    ["images/7.png","images/7.png","images/7.png"],
+    ["images/bar.png","images/bar.png","images/bar.png"],
+    ["images/7.png","images/7.png","images/bar.png"],
+    ["images/7.png","images/bar.png","images/7.png"],
+    ["images/bar.png","images/7.png","images/7.png"],
+    ["images/bar.png","images/bar.png","images/7.png"],
+    ["images/bar.png","images/7.png","images/bar.png"],
+    ["images/7.png","images/bar.png","images/bar.png"]
+  ];
+
+  const is7BarJackpot = winningCombos.some(combo => 
+    combo[0] === results[0] && combo[1] === results[1] && combo[2] === results[2]
+  );
 
   const isJackpot = isThreeSame || is7BarJackpot;
 
