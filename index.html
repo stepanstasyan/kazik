@@ -11,7 +11,7 @@
 <style>
 body {
   margin: 0;
-  height: 100vh;
+  min-height: 100vh; /* вместо height, чтобы разрешить скролл */
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -19,6 +19,7 @@ body {
   background-color: #2e2e2e;
   font-family: Arial, sans-serif;
   padding-top: 10px;
+  overflow-x: hidden;
 }
 
 /* логотип */
@@ -166,11 +167,7 @@ body {
     width: 240px;
     margin-bottom: 10px;
   }
-  .btn {
-    width: 200px;
-    height: 70px;
-    font-size: 1.5rem;
-  }
+  /* Кнопка остаётся в нормальном размере, не уменьшается */
 }
 </style>
 </head>
